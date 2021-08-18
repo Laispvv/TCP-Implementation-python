@@ -10,6 +10,17 @@ def checksum(segmento: bytes) -> int:
     res += res >> 16
     return (~res) & 0xffff
 
+def checksumfake(segmento):
+    if len(segmento) % 2 != 0:
+        segmento += '\0'
+    res = 0
+    for element in segmento:
+        res += ord(element)
+    
+    res = (res >> 16) + (res & 0xffff)
+    res += res >> 16
+    return (~res) & 0xffff
+
 class Segmento:
     def __init__(self,
                  host_origem,
@@ -37,6 +48,7 @@ class Segmento:
             0,
             0,            
         )
+        teste = f"!HHIIBBHHH, {self.port_origem}, {self.port_destino}, 0, 0, 5 << 4, {self.flags}, 8192,0,0"
         header = struct.pack(
             '!4s4sHH',
             socket.inet_aton(self.host_origem),
@@ -44,10 +56,13 @@ class Segmento:
             socket.SOCK_DGRAM,
             len(segmento)
         )
-        
+        teste2 = f"!4s4sHH, {socket.inet_aton(self.host_origem)}, {socket.inet_aton(self.host_destino)}, {socket.SOCK_DGRAM},{len(segmento)}"
         cksum = checksum(header + segmento)
+        cksumfake = checksumfake(teste + teste2)
         segmento = segmento[:16] + struct.pack('H', cksum) + segmento[18:]
+        testefinal = f"{teste[:16]}{cksumfake}{teste[18:]}"
     
-        return segmento
+        #return segmento
+        return bytes(testefinal, encoding='utf-8')
         
         

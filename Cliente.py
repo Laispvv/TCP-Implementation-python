@@ -24,7 +24,7 @@ if __name__ == '__main__':
         info += ' => '
         info += palavras[i]
         try:
-            segmento = Segmento(host, 20, host, 88, 0b000101001)
+            segmento = Segmento(host, 20, host, 88, 0b001)
             # s = socket(AF_INET, SOCK_RAW, SOCK_DGRAM)
             connection.sendto(segmento.build(), (host, port))
             msgServidor = connection.recvfrom(1024)

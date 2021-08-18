@@ -11,7 +11,7 @@ def start_server():
     while(True):
         data, (ip, client_port) = connection.recvfrom(1024)
         print(data)
-        # text = str(data, 'utf-8')
+        text = str(data, 'utf-8')
         # print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
         
         # enviando uma resposta para o cliente
