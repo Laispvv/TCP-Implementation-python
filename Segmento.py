@@ -2,6 +2,14 @@ import struct
 import array
 import socket
 
+def checksum(segmento: bytes) -> int:
+    if len(segmento) % 2 != 0:
+        segmento += b'\0'
+    res = sum(array.array("H", segmento))
+    res = (res >> 16) + (res & 0xffff)
+    res += res >> 16
+    return (~res) & 0xffff
+
 class Segmento:
     def __init__(self,
                  host_origem,
@@ -16,7 +24,7 @@ class Segmento:
         self.port_destino = port_destino
         self.flags = flags
     
-    def build(self):
+    def build(self) -> bytes:
         segmento = struct.pack(
             '!HHIIBBHHH',
             self.port_origem,
@@ -37,17 +45,9 @@ class Segmento:
             len(segmento)
         )
         
-        checksum = checksum(header + segmento)
-        segmento = segmento[:16] + struct.pack('H', checksum) + segmento[18:]
+        cksum = checksum(header + segmento)
+        segmento = segmento[:16] + struct.pack('H', cksum) + segmento[18:]
     
         return segmento
-    
-    def checkSum(segmento):
-        if len(segmento) % 2 != 0:
-            segmento += b'\0'
-        res = sum(array.array("H", segmento))
-        res = (res >> 16) + (res & 0xffff)
-        res += res >> 16
-        return (~res) & 0xffff
         
         
