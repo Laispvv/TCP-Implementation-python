@@ -18,8 +18,6 @@ def start_server():
         msg = "OK - enviou " + str(data, 'utf-8')
         connection.sendto(bytes(msg, encoding='utf8'), (ip, client_port))
         
-
-
 if __name__ == '__main__':
     start_server()
 
