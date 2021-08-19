@@ -6,3 +6,4 @@ janelaAtual = int(0)
 baseTransmissao = int(0)
 host = '127.0.0.1'
 port = 13000
+tamanhoHeader = 20

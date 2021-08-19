@@ -12,11 +12,11 @@ def start_server():
         data, (ip, client_port) = connection.recvfrom(1024)
         print(data)
         text = str(data, 'utf-8')
-        # print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
+        print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
         
         # enviando uma resposta para o cliente
-        # msg = "OK - enviou " + str(data, 'utf-8')
-        # connection.sendto(bytes(msg, encoding='utf8'), (ip, client_port))
+        msg = "OK - enviou " + str(data, 'utf-8')
+        connection.sendto(bytes(msg, encoding='utf8'), (ip, client_port))
         
 if __name__ == '__main__':
     start_server()
