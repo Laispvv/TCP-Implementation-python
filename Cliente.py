@@ -57,12 +57,60 @@ class Client:
         except error:
             print("Conexão perdida, tente novamente.")
     
+    def enviar_dados(self, host, port):
+        dados2 = "Key Point: If the environment variable GOOGLE_ADS_CONFIGURATION_FILE_PATH is set when the load_from_env method is called, then configuration values will be retrieved from the google-ads.yaml file located at the specified path, not from the environment variables described above.\nComo prática recomendada, o ideal é configurar a API para usar o roteamento de caminho com diferenciação de maiúsculas e minúsculas. Assim, a API retorna um código de status HTTP 404 quando o método solicitado na URL não corresponde ao nome do método de API listado na especificação OpenAPI. Os frameworks de aplicativos da Web, como o Node.js Express, têm uma configuração para ativar ou desativar o roteamento com diferenciação de maiúsculas e minúsculas. O comportamento padrão depende da biblioteca utilizada. Convém rever as configurações na biblioteca para ter certeza de que o roteamento com diferenciação de maiúsculas e minúsculas está ativado. Essa recomendação coincide com o v2.0 da especificação OpenAPI, que afirma: Todos os nomes de campo na especificação diferenciam maiúsculas de minúsculas"
+        dados = dados2[:1050]
+        # print(tamanhoDados)
+        # ALTERAR DPS
+        cabecalho = Segmento(host_origem=host,
+                                    port_origem=port,
+                                    host_destino=host,
+                                    port_destino=port,
+                                    flags=1,
+                                    syn=0,
+                                    fin=0,
+                                    seq_number=numeroSequencia,
+                                    ack_number=numeroSequencia+1,
+                                    ack_flag=1,
+                                    tam_header=tamanhoHeader,
+                                    janela=janelaAtual,
+                                    checksum=0)
+        tamCabecalho = len(cabecalho.build())
+        cabecalho.data = bytes(dados, encoding='utf-8')
+        tamanhoDados = len(cabecalho.build())
+        
+        if(tamanhoDados > MSS-tamCabecalho):
+            print(tamanhoDados)
+            quantidadeDeSegmentos = tamanhoDados//MSS
+            sobras = tamanhoDados % MSS
+            
+            #enviando os dados de tamanho inteiro
+            segmentos = []
+            for i in range(quantidadeDeSegmentos):
+                dados_enviar = bytes(dados[i*MSS - tamCabecalho : i*MSS + MSS - tamCabecalho], encoding='utf-8')
+                cabecalho.data = dados_enviar
+                segmentos.append(cabecalho)                
+            if sobras != 0 :
+                cabecalho.data=bytes(dados[quantidadeDeSegmentos*MSS - tamCabecalho:], encoding='utf-8')               
+                segmentos.append(cabecalho)
+            
+            for segmento in segmentos:
+                print(str(segmento.data, encoding='utf-8'))
+                self.connection.sendto(segmento.build(), (host, port))
+        else:
+            print(len(cabecalho.build()))
+            self.connection.sendto(cabecalho.build(), (host, port))
+                
     def terminar_conexao(self):
+        self.connection.close() 
         print("Finalizando conexão")
+        
 
 if __name__ == '__main__':
     cliente1 = Client()
     cliente1.criar_conexao(host, port)
+    cliente1.enviar_dados(host, port)
+    # cliente1.terminar_conexao()
 
     """"
     connection = socket(AF_INET, SOCK_DGRAM)

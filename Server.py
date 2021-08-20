@@ -51,7 +51,6 @@ class Server:
             while not self.tcp_handshake:
                 sleep(2)
             data, (ip, client_port) = self.connection.recvfrom(MSS)
-            print(data)
             text = str(data, 'utf-8')
             print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
             
