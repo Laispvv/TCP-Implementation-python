@@ -1,16 +1,10 @@
 import struct
 import array
 import socket
+from Functions import *
 
-# def checksum(segmento: bytes) -> int:
-#     if len(segmento) % 2 != 0:
-#         segmento += b'\0'
-#     res = sum(array.array("H", segmento))
-#     res = (res >> 16) + (res & 0xffff)
-#     res += res >> 16
-#     return (~res) & 0xffff
 
-def checksumfake(segmento):
+def checksum1(segmento):
     if len(segmento) % 2 != 0:
         segmento += '\0'
     res = 0
@@ -28,6 +22,8 @@ class Segmento:
                  host_destino,
                  port_destino,
                  flags,
+                 syn,
+                 fin,
                  seq_number,
                  ack_number,
                  ack_flag,
@@ -36,8 +32,8 @@ class Segmento:
                  checksum,
                  data = 0
                  ):
-        self.host_origem        = host_origem
-        self.host_destino       = host_destino
+        self.host_origem        = host_origem 
+        self.host_destino       = host_destino 
         self.port_origem        = port_origem
         self.port_destino       = port_destino
         self.flags              = flags
@@ -48,39 +44,30 @@ class Segmento:
         self.janela             = janela
         self.checksum           = checksum
         self.data               = data
+        self.syn                = syn
+        self.fin                = fin
     
     def build(self) -> bytes:
-        # segmento = struct.pack(
-        #     self.host_origem , 
-        #     self.host_destino,
-        #     self.port_origem ,
-        #     self.port_destino,
-        #     self.flags       ,
-        #     self.seq_number  ,
-        #     self.ack_number  ,
-        #     self.ack_flag    ,
-        #     self.tam_header  ,
-        #     self.janela      ,
-        #     self.checksum    ,
-        #     self.data        
-        # )
-        teste = f"{self.host_origem},{self.port_origem},{self.host_destino},{self.port_destino},{self.flags},{self.seq_number},{self.ack_number},{self.ack_flag},{self.tam_header},{self.janela},{self.checksum},{self.data}"
-        # header = struct.pack(
-        #     '!4s4sHH',
-        #     socket.inet_aton(self.host_origem),
-        #     socket.inet_aton(self.host_destino),
-        #     socket.SOCK_DGRAM,
-        #     len(segmento)
-        # )
-        # teste2 = f"!4s4sHH, {socket.inet_aton(self.host_origem)}, {socket.inet_aton(self.host_destino)}, {socket.SOCK_DGRAM},{len(segmento)}"
-        # cksum = checksum(header + segmento)
-        # cksumfake = checksumfake(teste + teste2)
-        cksumfake = checksumfake(teste)
-        # segmento = segmento[:16] + struct.pack('H', cksum) + segmento[18:]
-        testefinal = f"{teste[:45]}{cksumfake},{teste[47:]}"
-        print(testefinal)
+        segmento = {
+            "ip_origem": self.host_origem,
+            "port_origem": self.port_origem,
+            "ip_destino": self.host_destino,
+            "port_destino": self.port_destino,
+            "flags": self.flags,
+            "seq": self.seq_number,  # esse
+            "ack": self.ack_number,  # esse
+            "ack_flag": self.ack_flag,
+            "tam_header": self.tam_header,
+            "janela": self.janela,
+            "data": self.data
+            # syn
+            # mss
+        }
+        segmento_string = destroy_dict(segmento)
+        cksum = checksum1(segmento_string)
+        segmento["checksum"] = cksum
+        segmento_string = destroy_dict(segmento)
     
-        #return segmento
-        return bytes(testefinal, encoding='utf-8')
+        return bytes(segmento_string, encoding='utf-8')
         
         

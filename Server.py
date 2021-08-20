@@ -9,13 +9,14 @@ def start_server():
 
     # ouvindo possíveis datagramas que podem chegar
     while(True):
-        data, (ip, client_port) = connection.recvfrom(1024)
+        data, (ip, client_port) = connection.recvfrom(MSS)
         print(data)
         text = str(data, 'utf-8')
         print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
         
         # enviando uma resposta para o cliente
         msg = "OK - enviou " + str(data, 'utf-8')
+        msg = "data: dados aqui, SYN:1"
         connection.sendto(bytes(msg, encoding='utf8'), (ip, client_port))
         
 if __name__ == '__main__':
