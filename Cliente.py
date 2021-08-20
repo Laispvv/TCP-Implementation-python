@@ -7,26 +7,50 @@ from Functions import *
 
 class Client:
     def __init__(self) -> None:
-        self.connection = None
+        self.connection = socket(AF_INET, SOCK_DGRAM)
         self.response = None
         self.ip = None
         self.port = None
 
     def criar_conexao(self, ip_destino, porta_destino):
         try:
-            self.connection = socket(AF_INET, SOCK_DGRAM)
-            segmento_inicial = Segmento() # colocar os dados
+            segmento_inicial = Segmento(host_origem=host,
+                                        port_origem=port,
+                                        host_destino=host,
+                                        port_destino=port,
+                                        flags=0,
+                                        syn=1,
+                                        fin=0,
+                                        seq_number=numeroSequencia,
+                                        ack_number=0,
+                                        ack_flag=0,
+                                        tam_header=tamanhoHeader,
+                                        janela=janelaAtual,
+                                        checksum=0)
             self.connection.sendto(segmento_inicial.build(), (ip_destino, porta_destino))
             msgServidor = str(self.connection.recvfrom(MSS)[0], encoding="utf-8") 
-            listServidor = msgServidor.split(",")
-            listServidor = map(lambda x : x.split(":"), listServidor)
-            dictServidor = build_dict(list(listServidor))
-            if (dictServidor["SYN"] == "1"):
+            # listServidor = msgServidor.split(",")
+            # listServidor = map(lambda x : x.split(":"), listServidor)
+            dictServidor = build_dict(msgServidor)
+            if (dictServidor["syn"] == "1"):
                 try:
-                    # alocar varíaveis que vieram do servidor
+                    buffer = [0 for i in range(int(dictServidor["janela"]))]
 
-                    segmento_final = Segmento()  # colocar os dados
+                    segmento_final = Segmento(host_origem=host,
+                                        port_origem=port,
+                                        host_destino=host,
+                                        port_destino=port,
+                                        flags=0,
+                                        syn=0,
+                                        fin=0,
+                                        seq_number=numeroSequencia,
+                                        ack_number=int(dictServidor["seq_number"])+1,
+                                        ack_flag=1,
+                                        tam_header=tamanhoHeader,
+                                        janela=janelaAtual,
+                                        checksum=0) 
                     self.connection.sendto(segmento_final.build(), (ip_destino, porta_destino))
+                    print("Terminou o aperto de mão")
                 except error:
                     print("Conexão perdida, tente novamente.")
 

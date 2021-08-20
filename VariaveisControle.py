@@ -1,10 +1,10 @@
-numeroSequencia = int(0)
+numeroSequencia = 38924
 numeroACK = int(0)
-rwnd = int(0)
+rwnd = 1500
 cwnd = int(0)
-janelaAtual = int(0)
+janelaAtual = 1500
 baseTransmissao = int(0)
 host = '127.0.0.1'
 port = 13000
 tamanhoHeader = 20
-MSS = 1024
+MSS = 1500

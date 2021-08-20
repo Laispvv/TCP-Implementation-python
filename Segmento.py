@@ -59,8 +59,11 @@ class Segmento:
             "ack_flag": self.ack_flag,
             "tam_header": self.tam_header,
             "janela": self.janela,
+            "syn": self.syn,
+            "fin": self.fin,
+            "seq_number": self.seq_number,
+            "ack_number": self.ack_number,
             "data": self.data
-            # syn
             # mss
         }
         segmento_string = destroy_dict(segmento)
