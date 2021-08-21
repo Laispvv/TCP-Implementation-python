@@ -54,11 +54,11 @@ class Segmento:
             "ip_destino": self.host_destino,
             "port_destino": self.port_destino,
             "flags": self.flags,
-            "seq": self.seq_number,  # esse
-            "ack": self.ack_number,  # esse
+            "seq": self.seq_number,  
+            "ack": self.ack_number,  
             "ack_flag": self.ack_flag,
             "tam_header": self.tam_header,
-            "janela": self.janela,
+            "janela": self.janela,   # esse é o len do exemplo
             "syn": self.syn,
             "fin": self.fin,
             "seq_number": self.seq_number,

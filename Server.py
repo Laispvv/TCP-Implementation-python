@@ -3,17 +3,22 @@ from Segmento import Segmento
 from socket import *
 from VariaveisControle import *
 from Functions import *
+from random import random
 
 class Server:
     def __init__(self) -> None:
         self.connection = socket(AF_INET, SOCK_DGRAM)
         self.tcp_handshake = False
+        self.ack = 0
+        self.seq = 0
+        self.len_res = 0
+        self.buffer = None
     
     def criar_conexao(self):
         data, (ip, client_port) = self.connection.recvfrom(MSS)
         dicionario = build_dict(str(data, encoding='utf-8'))
         if(dicionario["syn"] == '1'):
-            buffer = [0 for i in range(int(dicionario["janela"]))]
+            self.buffer = [-1 for i in range(int(dicionario["janela"]))]
             segmento = Segmento(host_origem=host,
                                 port_origem=port,
                                 host_destino=host,
@@ -35,15 +40,16 @@ class Server:
                 self.tcp_handshake = True
                 print("Terminou o aperto de mão aqui também")
         
-# PROXIMO PASSSO: DIVIDIR ARQUIVO EM SEGMENTOS
-# DEPOIS DISSO: COMO ENVIAR E RECEBER ACKS
+# PROXIMO PASSSO: DIVIDIR ARQUIVO EM SEGMENTOS check
+# DEPOIS DISSO: COMO ENVIAR E RECEBER ACKS check
 # AI DEPOIS: O SLOW-START
 # E ENTÃO: O FAST-RECOVERY CONGESTÃO
 # E POR FIM: TIME-OUT
 
     def start_server(self):
+        file = open("output.txt", "w")
         self.connection.bind(('', port))
-        print("Servidor de pé e ouvindo")
+        print("Servidor de pé com ouvido")
 
         # ouvindo possíveis datagramas que podem chegar
         self.criar_conexao()
@@ -52,19 +58,55 @@ class Server:
 
         while(True):
             data, (ip, client_port) = self.connection.recvfrom(MSS)
-            # text = str(data, 'utf-8')
-            # print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
-            
-            
-            # print(str(data, encoding="utf-8"))
             dicionario = build_dict(str(data, encoding="utf-8"))
             print("O Cliente em {}:{} enviou {}".format(ip, client_port, dicionario["data"]))
+            file.write(dicionario["data"])
             
+            # seq_number
+            if (self.seq == 0):
+                self.seq = random()
+            else:
+                self.seq += self.len_res
+            
+
+            # ack_number
+            if (self.ack == 0):
+                self.ack = dicionario["seq_number"]
+            else:
+                if (self.ack == dicionario["seq_number"]):
+                    if self.buffer[0] == -1:
+                        index = 0
+                        while index < len(self.buffer):
+                            self.ack += self.buffer[index]
+                            self.buffer[index] = -1
+                            index += 1
+                    self.ack += dicionario["janela"]
+                else:
+                    index = 0
+                    while index < len(self.buffer):
+                        if self.buffer[index] == -1:
+                            index += 1
+                        else:
+                            break
+                    self.buffer[index] = dicionario["janela"]
+                
             
             # enviando uma resposta para o cliente
-            msg = "OK - enviou " + str(data, 'utf-8')
-            msg = "data: dados aqui, SYN:1"
-            self.connection.sendto(bytes(msg, encoding='utf8'), (ip, client_port))
+            ack = Segmento(host_origem=host,
+                                port_origem=port,
+                                host_destino=host,
+                                port_destino=port,
+                                flags=0,
+                                syn=0,
+                                fin=0,
+                                seq_number=self.seq,
+                                ack_number=self.ack,
+                                ack_flag=1,
+                                tam_header=tamanhoHeader,
+                                janela=0,       # tamanho dos dados enviados, no nosso caso, será sempre 0, pois estamos enviando apenas os acks
+                                checksum=0)
+                            
+            self.connection.sendto(ack.build(), (ip, client_port))
         
 if __name__ == '__main__':
     servidor = Server()
