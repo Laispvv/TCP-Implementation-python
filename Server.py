@@ -28,12 +28,12 @@ class Server:
                                 janela=janelaAtual,
                                 checksum=0)
             self.connection.sendto(segmento.build(), (ip, client_port))
-        data2, (ip2, client_port2) = self.connection.recvfrom(MSS)
-        dicionario2 = build_dict(str(data2, encoding="utf-8"))
-        if(int(dicionario2["ack_number"]) == numeroSequencia+1):
-            # terminou o aperto de mão de 3 vias
-            self.tcp_handshake = True
-            print("Terminou o aperto de mão aqui também")
+            data2, (ip2, client_port2) = self.connection.recvfrom(MSS)
+            dicionario2 = build_dict(str(data2, encoding="utf-8"))
+            if(int(dicionario2["ack_number"]) == numeroSequencia+1):
+                # terminou o aperto de mão de 3 vias
+                self.tcp_handshake = True
+                print("Terminou o aperto de mão aqui também")
         
 # PROXIMO PASSSO: DIVIDIR ARQUIVO EM SEGMENTOS
 # DEPOIS DISSO: COMO ENVIAR E RECEBER ACKS
@@ -46,13 +46,20 @@ class Server:
         print("Servidor de pé e ouvindo")
 
         # ouvindo possíveis datagramas que podem chegar
+        self.criar_conexao()
+        while not self.tcp_handshake:
+            sleep(2)
+
         while(True):
-            self.criar_conexao()
-            while not self.tcp_handshake:
-                sleep(2)
             data, (ip, client_port) = self.connection.recvfrom(MSS)
-            text = str(data, 'utf-8')
-            print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
+            # text = str(data, 'utf-8')
+            # print("O Cliente em {}:{} enviou {}".format(ip, client_port, text))
+            
+            
+            # print(str(data, encoding="utf-8"))
+            dicionario = build_dict(str(data, encoding="utf-8"))
+            print("O Cliente em {}:{} enviou {}".format(ip, client_port, dicionario["data"]))
+            
             
             # enviando uma resposta para o cliente
             msg = "OK - enviou " + str(data, 'utf-8')

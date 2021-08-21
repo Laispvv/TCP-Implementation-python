@@ -72,5 +72,10 @@ class Segmento:
         segmento_string = destroy_dict(segmento)
     
         return bytes(segmento_string, encoding='utf-8')
-        
+    
+    def set_data(self, data):
+        self.data = data
+
+    def clone(self):
+        return Segmento(self.host_origem, self.port_origem, self.host_destino, self.port_destino, self.flags, self.syn, self.fin, self.seq_number, self.ack_number, self.ack_flag, self.tam_header, self.janela, self.checksum, self.data)
         
