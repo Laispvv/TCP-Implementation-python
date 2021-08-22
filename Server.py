@@ -59,6 +59,10 @@ class Server:
         while(True):
             data, (ip, client_port) = self.connection.recvfrom(MSS)
             dicionario = build_dict(str(data, encoding="utf-8"))
+
+            if dicionario["fin"] == "1":
+                break
+
             print("O Cliente em {}:{} enviou {}".format(ip, client_port, dicionario["data"]))
             file.write(dicionario["data"])
             
@@ -74,9 +78,11 @@ class Server:
                 self.ack = dicionario["seq_number"]
             else:
                 if (self.ack == dicionario["seq_number"]):
-                    if self.buffer[0] == -1:
+                    if self.buffer[0] != -1:
                         index = 0
                         while index < len(self.buffer):
+                            if self.buffer[index] == -1:
+                                break
                             self.ack += self.buffer[index]
                             self.buffer[index] = -1
                             index += 1
@@ -84,7 +90,7 @@ class Server:
                 else:
                     index = 0
                     while index < len(self.buffer):
-                        if self.buffer[index] == -1:
+                        if self.buffer[index] != -1:
                             index += 1
                         else:
                             break
@@ -107,6 +113,8 @@ class Server:
                                 checksum=0)
                             
             self.connection.sendto(ack.build(), (ip, client_port))
+
+        self.connection.close()
         
 if __name__ == '__main__':
     servidor = Server()

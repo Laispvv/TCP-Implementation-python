@@ -89,15 +89,15 @@ class Client:
         tamanhoDados = len(cabecalho.build()) 
         
         if(tamanhoDados > MSS):
-            quantidadeDeSegmentos = math.ceil(tamanhoDados/MSS)
+            quantidadeDeSegmentos = math.ceil(tamanhoDados/(MSS/1))
             
             #enviando os dados de tamanho inteiro
             segmentos = []
             for i in range(quantidadeDeSegmentos):
                 if i == 0:
-                    new_dados = dados[: math.ceil((MSS/2))]   # arrumar essa divisão por 2 no slow start
+                    new_dados = dados[: math.ceil((MSS/1))]   
                 else:
-                    new_dados = dados[math.ceil(i*(MSS/2)) : math.ceil((i+1)*(MSS/2))] 
+                    new_dados = dados[math.ceil(i*(MSS/1)) : math.ceil((i+1)*(MSS/1))] 
                 
                 cabecalho.set_data(new_dados)
                 new_cabecalho = cabecalho.clone()
@@ -122,9 +122,11 @@ class Client:
                     self.ack = dicionario["seq_number"]
                 else:
                     if (self.ack == dicionario["seq_number"]):
-                        if self.buffer[0] == -1:
+                        if self.buffer[0] != -1:
                             index = 0
                             while index < len(self.buffer):
+                                if self.buffer[index] == -1:
+                                    break
                                 self.ack += self.buffer[index]
                                 self.buffer[index] = -1
                                 index += 1
@@ -132,7 +134,7 @@ class Client:
                     else:
                         index = 0
                         while index < len(self.buffer):
-                            if self.buffer[index] == -1:
+                            if self.buffer[index] != -1:
                                 index += 1
                             else:
                                 break
@@ -144,8 +146,20 @@ class Client:
             self.connection.sendto(cabecalho.build(), (host, port))
                 
     def terminar_conexao(self):
-        # mandar fin
-        # sleep(3)
+        cabecalho = Segmento(host_origem=host,
+                                    port_origem=port,
+                                    host_destino=host,
+                                    port_destino=port,
+                                    flags=1,
+                                    syn=0,
+                                    fin=1,
+                                    seq_number=self.seq,
+                                    ack_number=0,
+                                    ack_flag=0,
+                                    tam_header=tamanhoHeader,
+                                    janela=janelaAtual,
+                                    checksum=0)
+        self.connection.sendto(cabecalho.build(), (host, port))
         self.connection.close() 
         print("Finalizando conexão")
         
