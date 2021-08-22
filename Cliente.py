@@ -77,14 +77,13 @@ class Client:
                                     flags=1,
                                     syn=0,
                                     fin=0,
-                                    seq_number=self.seq,
+                                    seq_number=-1,
                                     ack_number=0,
                                     ack_flag=1,
                                     tam_header=tamanhoHeader,
-                                    janela=janelaAtual,
+                                    janela=janelaAtual,    # tem que atualizar esse janela atual, dizendo quantos segmentos ainda podem ser enviados
                                     checksum=0)
         tamanhoCabecalho = len(cabecalho.build()) 
-        cabecalho.data = bytes(dados, encoding='utf-8')     # aqui converte para bytes, depois não, por isso as vezes pode dar diferença de tamanho
         cabecalho.data = dados
         tamanhoDados = len(cabecalho.build()) 
         
@@ -102,9 +101,73 @@ class Client:
                 cabecalho.set_data(new_dados)
                 new_cabecalho = cabecalho.clone()
                 segmentos.append(new_cabecalho) 
+            
+            fila = []
+            cwnd_local = 1
+            acks_duplicados = 0
+            ssthresh = math.inf
+            passou_ss = False
+            rec_rap = False
+            while len(segmentos) != 0:
+                for i in range(cwnd_local):
+                    fila.append(segmentos.pop(0))
+                
+                aux_seq_number = self.seq
+                for i in range(cwnd_local):
+                    segmento = fila[i]
+
+                    self.len_res = tamanhoDados - tamanhoCabecalho   # na verdade, deveria ser do segmento enviado né, não do total
+                    segmento.ack_number = self.ack
+
+                    if segmento.seq_number == -1:
+                        aux_seq_number = self.seq + self.len_res  
+                        segmento.seq_number = aux_seq_number
+                        self.seq = segmento.seq_number
+
+                    segmento.janela = self.len_res
+                    self.connection.sendto(segmento.build(), (host, port))
+                
+                # ack_repetido = False
+                if not passou_ss and not rec_rap:
+                    # slow start
+                    index = 0
+                    for i in range(cwnd_local):
+                        index = i
+                        data, (ip, client_port) = self.connection.recvfrom(MSS)
+                        dicionario = build_dict(str(data, encoding="utf-8"))
+
+                        if (self.ack == 0):
+                            self.ack = dicionario["seq_number"]
+                        else:
+                            if (fila[i].seq_number + fila[i].janela == dicionario["ack_number"]):   
+                                cwnd_local += 1
+                                acks_duplicados = 0
+                                if cwnd_local >= ssthresh:
+                                    passou_ss = True
+                                    break
+                            else:
+                                acks_duplicados += 1
+                                segmentos.insert(0, fila[i])
+                                if acks_duplicados == 3:
+                                    ssthresh = cwnd_local // 2
+                                    cwnd_local = ssthresh + 3
+                                    rec_rap = True
+                            
+                if passou_ss:
+                    # prevenção de congestionamento, começando do index
+                    print("ss")
+                    exit()
+                    pass
+
+                # recuperação rápida
+                if rec_rap:
+                    print("rep")
+                    exit()
+                    pass
+
 
             for segmento in segmentos:
-                self.len_res = tamanhoDados - tamanhoCabecalho
+                self.len_res = tamanhoDados - tamanhoCabecalho   # na verdade, deveria ser do segmento enviado né, não do total
 
                 segmento.ack_number = self.ack
                 segmento.seq_number = self.seq
@@ -139,6 +202,7 @@ class Client:
                             else:
                                 break
                         self.buffer[index] = dicionario["janela"]
+                        # mandar o segmento perdido
 
 
             self.terminar_conexao()

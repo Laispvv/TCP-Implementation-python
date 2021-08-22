@@ -77,7 +77,7 @@ class Server:
             if (self.ack == 0):
                 self.ack = dicionario["seq_number"]
             else:
-                if (self.ack == dicionario["seq_number"]):
+                if (self.ack == dicionario["seq_number"]):  # aqui está errado a comparação
                     if self.buffer[0] != -1:
                         index = 0
                         while index < len(self.buffer):
@@ -109,7 +109,8 @@ class Server:
                                 ack_number=self.ack,
                                 ack_flag=1,
                                 tam_header=tamanhoHeader,
-                                janela=0,       # tamanho dos dados enviados, no nosso caso, será sempre 0, pois estamos enviando apenas os acks
+                                janela=0,       # tamanho dos dados enviados, no nosso caso, será sempre 0, pois estamos enviando apenas os acks (criar um novo atributo chamado len)
+                                # tem que atualizar esse janela atual, dizendo quantos segmentos ainda podem ser enviados
                                 checksum=0)
                             
             self.connection.sendto(ack.build(), (ip, client_port))

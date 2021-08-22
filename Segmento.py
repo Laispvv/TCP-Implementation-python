@@ -58,7 +58,7 @@ class Segmento:
             "ack": self.ack_number,  
             "ack_flag": self.ack_flag,
             "tam_header": self.tam_header,
-            "janela": self.janela,   # esse é o len do exemplo
+            "janela": self.janela,
             "syn": self.syn,
             "fin": self.fin,
             "seq_number": self.seq_number,
