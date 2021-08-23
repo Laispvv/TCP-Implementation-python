@@ -4,7 +4,7 @@ from Segmento import Segmento
 from VariaveisControle import *
 from Functions import *
 import math
-from random import random
+from random import randint, random
 
 
 class Client:
@@ -69,7 +69,7 @@ class Client:
         dados = file.read()
         # print(tamanhoDados)
         # ALTERAR DPS
-        self.seq = random()
+        self.seq = randint(0, 100)
         cabecalho = Segmento(host_origem=host,
                                     port_origem=port,
                                     host_destino=host,
@@ -86,36 +86,44 @@ class Client:
         tamanhoCabecalho = len(cabecalho.build()) 
         cabecalho.data = dados
         tamanhoDados = len(cabecalho.build()) 
-        
+
         if(tamanhoDados > MSS):
-            quantidadeDeSegmentos = math.ceil(tamanhoDados/(MSS/1))
+            quantidadeDeSegmentos = math.ceil(tamanhoDados/MSS)
+            # quantidadeDeSegmentos = math.ceil((tamanhoDados - 270)/(MSS - 270))
             
-            #enviando os dados de tamanho inteiro
             segmentos = []
             for i in range(quantidadeDeSegmentos):
-                if i == 0:
-                    new_dados = dados[: math.ceil((MSS/1))]   
+                if i == 0: 
+                    new_dados = dados[: MSS]     
+                    # new_dados = dados[: math.ceil((MSS - 270))] 
                 else:
-                    new_dados = dados[math.ceil(i*(MSS/1)) : math.ceil((i+1)*(MSS/1))] 
+                    new_dados = dados[i*MSS : (i+1)*MSS] 
+                    # new_dados = dados[math.ceil(i*(MSS - 270)) : math.ceil((i+1)*(MSS - 270))] 
                 
                 cabecalho.set_data(new_dados)
                 new_cabecalho = cabecalho.clone()
                 segmentos.append(new_cabecalho) 
             
-            fila = []
             cwnd_local = 1
             acks_duplicados = 0
             ssthresh = math.inf
+            # ssthresh = 8
             passou_ss = False
             rec_rap = False
             while len(segmentos) != 0:
+                fila = []
+                enviados = 0
                 for i in range(cwnd_local):
-                    fila.append(segmentos.pop(0))
+                    try:
+                        fila.append(segmentos.pop(0))
+                        enviados += 1
+                    except:
+                        break
                 
                 aux_seq_number = self.seq
-                for i in range(cwnd_local):
+                for i in range(enviados):
                     segmento = fila[i]
-
+                
                     self.len_res = tamanhoDados - tamanhoCabecalho   # na verdade, deveria ser do segmento enviado né, não do total
                     segmento.ack_number = self.ack
 
@@ -127,19 +135,20 @@ class Client:
                     segmento.janela = self.len_res
                     self.connection.sendto(segmento.build(), (host, port))
                 
+                index = 0
                 # ack_repetido = False
                 if not passou_ss and not rec_rap:
                     # slow start
-                    index = 0
-                    for i in range(cwnd_local):
+                    for i in range(enviados):
                         index = i
                         data, (ip, client_port) = self.connection.recvfrom(MSS)
                         dicionario = build_dict(str(data, encoding="utf-8"))
 
                         if (self.ack == 0):
-                            self.ack = dicionario["seq_number"]
+                            self.ack = int(dicionario["seq_number"])
                         else:
-                            if (fila[i].seq_number + fila[i].janela == dicionario["ack_number"]):   
+                            if (fila[i].seq_number + fila[i].janela == int(dicionario["ack_number"])):   
+                                self.ack = int(dicionario["seq_number"]) + int(dicionario["janela"])
                                 cwnd_local += 1
                                 acks_duplicados = 0
                                 if cwnd_local >= ssthresh:
@@ -155,59 +164,49 @@ class Client:
                             
                 if passou_ss:
                     # prevenção de congestionamento, começando do index
-                    print("ss")
-                    exit()
-                    pass
+                    for i in range(index, enviados):
+                        data, (ip, client_port) = self.connection.recvfrom(MSS)
+                        dicionario = build_dict(str(data, encoding="utf-8"))
+
+                        if (self.ack == 0):
+                            self.ack = int(dicionario["seq_number"])
+                        else:
+                            if (fila[i].seq_number + fila[i].janela == int(dicionario["ack_number"])):   
+                                self.ack = int(dicionario["seq_number"]) + int(dicionario["janela"])
+                                cwnd_local += round(cwnd_local*1/cwnd_local)  # verificar se está correto
+                                acks_duplicados = 0
+                            else:
+                                acks_duplicados += 1
+                                segmentos.insert(0, fila[i])
+                                if acks_duplicados == 3:
+                                    ssthresh = cwnd_local // 2
+                                    cwnd_local = ssthresh + 3
+                                    rec_rap = True
+                                    passou_ss = False
 
                 # recuperação rápida
                 if rec_rap:
-                    print("rep")
-                    exit()
-                    pass
+                    for i in range(enviados):
+                        index = i
+                        data, (ip, client_port) = self.connection.recvfrom(MSS)
+                        dicionario = build_dict(str(data, encoding="utf-8"))
 
-
-            for segmento in segmentos:
-                self.len_res = tamanhoDados - tamanhoCabecalho   # na verdade, deveria ser do segmento enviado né, não do total
-
-                segmento.ack_number = self.ack
-                segmento.seq_number = self.seq
-                segmento.janela = self.len_res
-                self.connection.sendto(segmento.build(), (host, port))
-
-                data, (ip, client_port) = self.connection.recvfrom(MSS)
-                dicionario = build_dict(str(data, encoding="utf-8"))
-
-                # seq_number
-                self.seq += self.len_res
-                
-                # ack_number
-                if (self.ack == 0):
-                    self.ack = dicionario["seq_number"]
-                else:
-                    if (self.ack == dicionario["seq_number"]):
-                        if self.buffer[0] != -1:
-                            index = 0
-                            while index < len(self.buffer):
-                                if self.buffer[index] == -1:
-                                    break
-                                self.ack += self.buffer[index]
-                                self.buffer[index] = -1
-                                index += 1
-                        self.ack += dicionario["janela"]
-                    else:
-                        index = 0
-                        while index < len(self.buffer):
-                            if self.buffer[index] != -1:
-                                index += 1
+                        if (self.ack == 0):
+                            self.ack = int(dicionario["seq_number"])
+                        else:
+                            if (fila[i].seq_number + fila[i].janela == int(dicionario["ack_number"])):   
+                                self.ack = int(dicionario["seq_number"]) + int(dicionario["janela"])
+                                cwnd_local = ssthresh
+                                acks_duplicados = 0
+                                rec_rap = False
+                                passou_ss = True
                             else:
-                                break
-                        self.buffer[index] = dicionario["janela"]
-                        # mandar o segmento perdido
-
-
-            self.terminar_conexao()
+                                segmentos.insert(0, fila[i])
+                                cwnd_local += 1
         else:
             self.connection.sendto(cabecalho.build(), (host, port))
+        
+        self.terminar_conexao()
                 
     def terminar_conexao(self):
         cabecalho = Segmento(host_origem=host,
@@ -234,7 +233,7 @@ if __name__ == '__main__':
     cliente1.enviar_dados(host, port)
     # cliente1.terminar_conexao()
 
-    """"
+    """
     connection = socket(AF_INET, SOCK_DGRAM)
     estaConectado = True
     

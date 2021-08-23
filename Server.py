@@ -3,7 +3,7 @@ from Segmento import Segmento
 from socket import *
 from VariaveisControle import *
 from Functions import *
-from random import random
+from random import *
 
 class Server:
     def __init__(self) -> None:
@@ -57,7 +57,7 @@ class Server:
             sleep(2)
 
         while(True):
-            data, (ip, client_port) = self.connection.recvfrom(MSS)
+            data, (ip, client_port) = self.connection.recvfrom(MSS + 270) #  + 268
             dicionario = build_dict(str(data, encoding="utf-8"))
 
             if dicionario["fin"] == "1":
@@ -68,16 +68,15 @@ class Server:
             
             # seq_number
             if (self.seq == 0):
-                self.seq = random()
+                self.seq = randint(0, 100)
             else:
                 self.seq += self.len_res
             
-
             # ack_number
             if (self.ack == 0):
-                self.ack = dicionario["seq_number"]
+                self.ack = int(dicionario["seq_number"])
             else:
-                if (self.ack == dicionario["seq_number"]):  # aqui está errado a comparação
+                if (int(self.seq) + int(self.len_res) == int(dicionario["ack_number"])): 
                     if self.buffer[0] != -1:
                         index = 0
                         while index < len(self.buffer):
@@ -86,7 +85,7 @@ class Server:
                             self.ack += self.buffer[index]
                             self.buffer[index] = -1
                             index += 1
-                    self.ack += dicionario["janela"]
+                    self.ack = int(dicionario["janela"]) + int(dicionario["seq_number"]) 
                 else:
                     index = 0
                     while index < len(self.buffer):
@@ -94,7 +93,7 @@ class Server:
                             index += 1
                         else:
                             break
-                    self.buffer[index] = dicionario["janela"]
+                    self.buffer[index] = int(dicionario["janela"])
                 
             
             # enviando uma resposta para o cliente
