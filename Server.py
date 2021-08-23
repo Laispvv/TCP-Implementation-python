@@ -4,6 +4,7 @@ from socket import *
 from VariaveisControle import *
 from Functions import *
 from random import *
+import Log
 
 class Server:
     def __init__(self) -> None:
@@ -35,6 +36,11 @@ class Server:
             self.connection.sendto(segmento.build(), (ip, client_port))
             data2, (ip2, client_port2) = self.connection.recvfrom(MSS)
             dicionario2 = build_dict(str(data2, encoding="utf-8"))
+            # salvando resposta do cliente no log
+            Log.ocorrido += f'\nO Cliente em {ip}:{client_port} enviou:\n'
+            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'        
+            
+            
             if(int(dicionario2["ack_number"]) == numeroSequencia+1):
                 # terminou o aperto de mão de 3 vias
                 self.tcp_handshake = True
@@ -42,8 +48,8 @@ class Server:
         
 # PROXIMO PASSSO: DIVIDIR ARQUIVO EM SEGMENTOS check
 # DEPOIS DISSO: COMO ENVIAR E RECEBER ACKS check
-# AI DEPOIS: O SLOW-START
-# E ENTÃO: O FAST-RECOVERY CONGESTÃO
+# AI DEPOIS: O SLOW-START check
+# E ENTÃO: O FAST-RECOVERY CONGESTÃO check
 # E POR FIM: TIME-OUT
 
     def start_server(self):
@@ -59,11 +65,13 @@ class Server:
         while(True):
             data, (ip, client_port) = self.connection.recvfrom(MSS + 270) #  + 268
             dicionario = build_dict(str(data, encoding="utf-8"))
-
+            # salvando resposta do cliente no log
+            Log.ocorrido += f'\nO Cliente em {ip}:{client_port} enviou:\n'
+            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'        
+            
             if dicionario["fin"] == "1":
                 break
-
-            print("O Cliente em {}:{} enviou {}".format(ip, client_port, dicionario["data"]))
+                        
             file.write(dicionario["data"])
             
             # seq_number
@@ -111,9 +119,10 @@ class Server:
                                 janela=0,       # tamanho dos dados enviados, no nosso caso, será sempre 0, pois estamos enviando apenas os acks (criar um novo atributo chamado len)
                                 # tem que atualizar esse janela atual, dizendo quantos segmentos ainda podem ser enviados
                                 checksum=0)
-                            
             self.connection.sendto(ack.build(), (ip, client_port))
 
+        Log.escrever_log()
+        sleep(3)
         self.connection.close()
         
 if __name__ == '__main__':

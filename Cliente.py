@@ -5,6 +5,7 @@ from VariaveisControle import *
 from Functions import *
 import math
 from random import randint, random
+import Log
 
 
 class Client:
@@ -34,10 +35,13 @@ class Client:
                                         janela=janelaAtual,
                                         checksum=0)
             self.connection.sendto(segmento_inicial.build(), (ip_destino, porta_destino))
-            msgServidor = str(self.connection.recvfrom(MSS)[0], encoding="utf-8") 
-            # listServidor = msgServidor.split(",")
-            # listServidor = map(lambda x : x.split(":"), listServidor)
-            dictServidor = build_dict(msgServidor)
+            data, (ip, client_port) = self.connection.recvfrom(MSS)
+            # salvando resposta do servidor no log
+            dictServidor = build_dict(str(data, encoding="utf-8"))
+                        
+            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
+            Log.ocorrido += f'Número de sequênica: {dictServidor["seq_number"]}\t|\tTamanho total: {dictServidor["janela"]}\t|\tNúmero de confirmação: {dictServidor["ack_number"]}\n'
+            Log.ocorrido += f'Conteúdo: {dictServidor["data"]}\n'
             if (dictServidor["syn"] == "1"):
                 try:
                     self.buffer = [-1 for i in range(int(dictServidor["janela"]))]
@@ -64,27 +68,28 @@ class Client:
             print("Conexão perdida, tente novamente.")
     
     def enviar_dados(self, host, port):
-        dados = "Key Point: If the environment variable GOOGLE_ADS_CONFIGURATION_FILE_PATH is set when the load_from_env method is called, then configuration values will be retrieved from the google-ads.yaml file located at the specified path, not from the environment variables described above.\nComo prática recomendada, o ideal é configurar a API para usar o roteamento de caminho com diferenciação de maiúsculas e minúsculas. Assim, a API retorna um código de status HTTP 404 quando o método solicitado na URL não corresponde ao nome do método de API listado na especificação OpenAPI. Os frameworks de aplicativos da Web, como o Node.js Express, têm uma configuração para ativar ou desativar o roteamento com diferenciação de maiúsculas e minúsculas. O comportamento padrão depende da biblioteca utilizada. Convém rever as configurações na biblioteca para ter certeza de que o roteamento com diferenciação de maiúsculas e minúsculas está ativado. Essa recomendação coincide com o v2.0 da especificação OpenAPI, que afirma: Todos os nomes de campo na especificação diferenciam maiúsculas de minúsculas"
+        # dados = "Key Point: If the environment variable GOOGLE_ADS_CONFIGURATION_FILE_PATH is set when the load_from_env method is called, then configuration values will be retrieved from the google-ads.yaml file located at the specified path, not from the environment variables described above.\nComo prática recomendada, o ideal é configurar a API para usar o roteamento de caminho com diferenciação de maiúsculas e minúsculas. Assim, a API retorna um código de status HTTP 404 quando o método solicitado na URL não corresponde ao nome do método de API listado na especificação OpenAPI. Os frameworks de aplicativos da Web, como o Node.js Express, têm uma configuração para ativar ou desativar o roteamento com diferenciação de maiúsculas e minúsculas. O comportamento padrão depende da biblioteca utilizada. Convém rever as configurações na biblioteca para ter certeza de que o roteamento com diferenciação de maiúsculas e minúsculas está ativado. Essa recomendação coincide com o v2.0 da especificação OpenAPI, que afirma: Todos os nomes de campo na especificação diferenciam maiúsculas de minúsculas"
         file = open("./shrek.txt", "r")
         dados = file.read()
         # print(tamanhoDados)
         # ALTERAR DPS
         self.seq = randint(0, 100)
         cabecalho = Segmento(host_origem=host,
-                                    port_origem=port,
-                                    host_destino=host,
-                                    port_destino=port,
-                                    flags=1,
-                                    syn=0,
-                                    fin=0,
-                                    seq_number=-1,
-                                    ack_number=0,
-                                    ack_flag=1,
-                                    tam_header=tamanhoHeader,
-                                    janela=janelaAtual,    # tem que atualizar esse janela atual, dizendo quantos segmentos ainda podem ser enviados
-                                    checksum=0)
+                            port_origem=port,
+                            host_destino=host,
+                            port_destino=port,
+                            flags=1,
+                            syn=0,
+                            fin=0,
+                            seq_number=-1,
+                            ack_number=0,
+                            ack_flag=1,
+                            tam_header=0,
+                            janela=janelaAtual,    # tem que atualizar esse janela atual, dizendo quantos segmentos ainda podem ser enviados
+                            checksum=0)
         tamanhoCabecalho = len(cabecalho.build()) 
         cabecalho.data = dados
+        cabecalho.tam_header = tamanhoCabecalho
         tamanhoDados = len(cabecalho.build()) 
 
         if(tamanhoDados > MSS):
@@ -106,8 +111,8 @@ class Client:
             
             cwnd_local = 1
             acks_duplicados = 0
-            ssthresh = math.inf
-            # ssthresh = 8
+            # ssthresh = math.inf
+            ssthresh = 8
             passou_ss = False
             rec_rap = False
             while len(segmentos) != 0:
@@ -123,8 +128,8 @@ class Client:
                 aux_seq_number = self.seq
                 for i in range(enviados):
                     segmento = fila[i]
-                
-                    self.len_res = tamanhoDados - tamanhoCabecalho   # na verdade, deveria ser do segmento enviado né, não do total
+
+                    self.len_res = len(fila[i].data)
                     segmento.ack_number = self.ack
 
                     if segmento.seq_number == -1:
@@ -132,18 +137,25 @@ class Client:
                         segmento.seq_number = aux_seq_number
                         self.seq = segmento.seq_number
 
-                    segmento.janela = self.len_res
+                    segmento.janela = self.len_res                    
                     self.connection.sendto(segmento.build(), (host, port))
                 
                 index = 0
+                recebeu = False
                 # ack_repetido = False
                 if not passou_ss and not rec_rap:
                     # slow start
+                    print("slow start")
                     for i in range(enviados):
                         index = i
                         data, (ip, client_port) = self.connection.recvfrom(MSS)
                         dicionario = build_dict(str(data, encoding="utf-8"))
-
+                        # salvando resposta do servidor no log
+                        Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
+                        Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
+                        
+                        recebeu = True
+                        
                         if (self.ack == 0):
                             self.ack = int(dicionario["seq_number"])
                         else:
@@ -164,10 +176,15 @@ class Client:
                             
                 if passou_ss:
                     # prevenção de congestionamento, começando do index
+                    print("prevenção de congestionamento")
                     for i in range(index, enviados):
-                        data, (ip, client_port) = self.connection.recvfrom(MSS)
-                        dicionario = build_dict(str(data, encoding="utf-8"))
-
+                        if not recebeu:
+                            data, (ip, client_port) = self.connection.recvfrom(MSS)
+                            dicionario = build_dict(str(data, encoding="utf-8"))
+                            # salvando resposta do servidor no log
+                            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
+                            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
+                        
                         if (self.ack == 0):
                             self.ack = int(dicionario["seq_number"])
                         else:
@@ -186,10 +203,16 @@ class Client:
 
                 # recuperação rápida
                 if rec_rap:
+                    print("recuperação rápida")
                     for i in range(enviados):
                         index = i
-                        data, (ip, client_port) = self.connection.recvfrom(MSS)
-                        dicionario = build_dict(str(data, encoding="utf-8"))
+                        if not recebeu:
+                            data, (ip, client_port) = self.connection.recvfrom(MSS)
+                            dicionario = build_dict(str(data, encoding="utf-8"))
+                            # salvando resposta do servidor no log
+                            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
+                            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
+                        
 
                         if (self.ack == 0):
                             self.ack = int(dicionario["seq_number"])
@@ -231,46 +254,6 @@ if __name__ == '__main__':
     cliente1 = Client()
     cliente1.criar_conexao(host, port)
     cliente1.enviar_dados(host, port)
-    # cliente1.terminar_conexao()
-
-    """
-    connection = socket(AF_INET, SOCK_DGRAM)
-    estaConectado = True
-    
-    numeros = []
-    palavras = []
-    for i in range(1, 200):
-        numeros.append(i)
-        if i % 2 == 0:
-            palavras.append('a')       
-        else:
-            palavras.append('b')   
-    
-    # enviando dados para o servidor    
-    for i in range(len(numeros)):
-        info = ""
-        info += str(numeros[i])
-        info += ' => '
-        info += palavras[i]
-        try:
-            segmento = Segmento(host, port, host, port, 0b000, 0, 0, 0, tamanhoHeader, 0, 0, info)
-            # s = socket(AF_INET, SOCK_RAW, SOCK_DGRAM)
-            connection.sendto(segmento.build(), (host, port))
-            msgServidor = connection.recvfrom(1024)
-            print(msgServidor)
-        except error:
-            estaConectado = False
-            connection = socket()
-            print("Conexão perdida... reconectando.")
-            while not estaConectado:
-                try:
-                    connection.connect((host, port))
-                    estaConectado = True
-                    print("Reconectado com sucesso.")
-                except error:
-                    sleep(2)
-    connection.close() 
-    """
             
             
 
