@@ -5,7 +5,6 @@ from VariaveisControle import *
 from Functions import *
 import math
 from random import randint, random
-import Log
 
 
 class Client:
@@ -34,14 +33,13 @@ class Client:
                                         tam_header=tamanhoHeader,
                                         janela=janelaAtual,
                                         checksum=0)
+            seg = segmento_inicial.build()
+            segmento_inicial.tam_header = len(seg)
             self.connection.sendto(segmento_inicial.build(), (ip_destino, porta_destino))
             data, (ip, client_port) = self.connection.recvfrom(MSS)
             # salvando resposta do servidor no log
             dictServidor = build_dict(str(data, encoding="utf-8"))
                         
-            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
-            Log.ocorrido += f'Número de sequênica: {dictServidor["seq_number"]}\t|\tTamanho total: {dictServidor["janela"]}\t|\tNúmero de confirmação: {dictServidor["ack_number"]}\n'
-            Log.ocorrido += f'Conteúdo: {dictServidor["data"]}\n'
             if (dictServidor["syn"] == "1"):
                 try:
                     self.buffer = [-1 for i in range(int(dictServidor["janela"]))]
@@ -59,6 +57,8 @@ class Client:
                                         tam_header=tamanhoHeader,
                                         janela=janelaAtual,
                                         checksum=0) 
+                    seg2 = segmento_final.build()
+                    segmento_final.tam_header = len(seg2)
                     self.connection.sendto(segmento_final.build(), (ip_destino, porta_destino))
                     print("Terminou o aperto de mão")
                 except error:
@@ -151,8 +151,6 @@ class Client:
                         data, (ip, client_port) = self.connection.recvfrom(MSS)
                         dicionario = build_dict(str(data, encoding="utf-8"))
                         # salvando resposta do servidor no log
-                        Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
-                        Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
                         
                         recebeu = True
                         
@@ -182,8 +180,6 @@ class Client:
                             data, (ip, client_port) = self.connection.recvfrom(MSS)
                             dicionario = build_dict(str(data, encoding="utf-8"))
                             # salvando resposta do servidor no log
-                            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
-                            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
                         
                         if (self.ack == 0):
                             self.ack = int(dicionario["seq_number"])
@@ -210,9 +206,6 @@ class Client:
                             data, (ip, client_port) = self.connection.recvfrom(MSS)
                             dicionario = build_dict(str(data, encoding="utf-8"))
                             # salvando resposta do servidor no log
-                            Log.ocorrido += f'\nO Servidor em {ip}:{client_port} enviou:\n'
-                            Log.ocorrido += f'Número de sequênica: {dicionario["seq_number"]}\t|\tTamanho total: {dicionario["janela"]}\t|\tNúmero de confirmação: {dicionario["ack_number"]}\n'
-                        
 
                         if (self.ack == 0):
                             self.ack = int(dicionario["seq_number"])
